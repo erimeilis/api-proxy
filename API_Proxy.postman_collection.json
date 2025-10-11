@@ -1,0 +1,450 @@
+{
+  "info": {
+    "name": "API Proxy",
+    "description": "Complete test suite for API Proxy with Durable Objects\n\n✨ Features:\n✅ Multi-region routing (8 Cloudflare regions)\n✅ HTTP/SOAP proxy with Durable Objects\n✅ Authorization via Bearer token\n✅ Two-level logging (info/debug)\n\n🚀 Quick Start:\n1. Set {{AUTH_TOKEN}} variable (from your Cloudflare secret)\n2. Set {{REGION}} to desired region (default: wnam)\n3. Run requests to test functionality\n\n🌍 Region Options:\nwnam (default), enam, weur, eeur, apac, oc, af, me\n\n📖 Live Worker:\nhttps://api-proxy.admice.com",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{AUTH_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "https://api-proxy.admice.com",
+      "type": "string"
+    },
+    {
+      "key": "AUTH_TOKEN",
+      "value": "0+2WkpfdtspS3+AG8PZ5/e3FXfmH1QRrs0ADhCJPVUw=",
+      "type": "string",
+      "description": "Your Cloudflare secret AUTH_TOKEN"
+    },
+    {
+      "key": "REGION",
+      "value": "wnam",
+      "type": "string",
+      "description": "Region options: wnam (US West), enam (US East), weur (Western Europe), eeur (Eastern Europe), apac (Asia-Pacific), oc (Oceania), af (Africa), me (Middle East)"
+    }
+  ],
+  "item": [
+    {
+      "name": "✅ Quick Tests",
+      "item": [
+        {
+          "name": "HTTP GET Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Simple HTTP GET request via proxy.\n\n✅ Expected: Status 200 with httpbin.org GET response"
+          }
+        },
+        {
+          "name": "HTTP POST with Parameters",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/post\",\n  \"method\": \"post\",\n  \"params\": {\n    \"name\": \"Test User\",\n    \"email\": \"test@example.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "HTTP POST request with JSON parameters.\n\n✅ Expected: Status 200 with parameters echoed in response body"
+          }
+        },
+        {
+          "name": "SOAP Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              },
+              {
+                "key": "X-Request-Type",
+                "value": "soap",
+                "description": "Indicates SOAP request"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/post\",\n  \"action\": \"testAction\",\n  \"namespace\": \"urn:testNamespace\",\n  \"params\": [\n    [\"param1\", \"value1\"],\n    [\"param2\", \"value2\"]\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "SOAP 1.1 request with NuSOAP format.\n\n✅ Expected: Status 200 with SOAP envelope in response data\n\nNote: Using httpbin.org for testing - it will echo the SOAP envelope in the POST body."
+          }
+        },
+        {
+          "name": "Region-Specific Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "weur",
+                "description": "Force EU West region"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Request routed to specific region (EU West).\n\n✅ Expected: Status 200\n\nCheck logs to verify processing in EU datacenter (e.g., CDG, AMS, WAW)"
+          }
+        }
+      ],
+      "description": "Quick verification tests for basic functionality"
+    },
+    {
+      "name": "🌍 Multi-Region Tests",
+      "item": [
+        {
+          "name": "Western North America (WNAM)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "wnam"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Process request in Western North America region.\n\n✅ Expected datacenter: LAX, SJC, SEA, etc."
+          }
+        },
+        {
+          "name": "Western Europe (WEUR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "weur"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Process request in Western Europe region (GDPR compliant).\n\n✅ Expected datacenter: CDG, AMS, FRA, etc."
+          }
+        },
+        {
+          "name": "Asia-Pacific (APAC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "apac"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Process request in Asia-Pacific region.\n\n✅ Expected datacenter: SIN, HKG, NRT, etc."
+          }
+        }
+      ],
+      "description": "Test requests across different Cloudflare regions"
+    },
+    {
+      "name": "📊 Logging Tests",
+      "item": [
+        {
+          "name": "Info Logging (Default)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/post\",\n  \"method\": \"post\",\n  \"params\": {\n    \"test\": \"info_logging\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Info level logging (production default).\n\n📝 Logs shown:\n- Request received at datacenter\n- Selected region\n- DO processing location\n- Response status\n- Completion message\n\n📝 Logs NOT shown:\n- Request path\n- HTTP method details\n- Parameter values\n- Response body size"
+          }
+        },
+        {
+          "name": "Debug Logging",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              },
+              {
+                "key": "X-Log-Level",
+                "value": "debug",
+                "description": "Enable detailed logging"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/post\",\n  \"method\": \"post\",\n  \"params\": {\n    \"test\": \"debug_logging\",\n    \"key1\": \"value1\",\n    \"key2\": \"value2\"\n  },\n  \"headers\": {\n    \"X-Custom-Header\": \"test\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Debug level logging for development/testing.\n\n📝 Additional logs shown:\n- Request path\n- HTTP method and target URL\n- Number of parameters\n- Number of custom headers\n- Response headers count\n- Response body size in bytes\n\nUse `wrangler tail --format pretty` to view logs in real-time."
+          }
+        }
+      ],
+      "description": "Test different logging levels (info vs debug)"
+    },
+    {
+      "name": "❌ Error Handling",
+      "item": [
+        {
+          "name": "Invalid Authentication",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "invalid-token-12345",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/get\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Test authentication failure.\n\n❌ Expected: 403 Forbidden with \"Forbidden\" message"
+          }
+        },
+        {
+          "name": "Target Endpoint Error (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://httpbin.org/status/404\",\n  \"method\": \"get\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Test target endpoint returning 404.\n\n❌ Expected response:\n```json\n{\n  \"status\": 404,\n  \"message\": \"Not Found\"\n}\n```\n\nNote: Proxy returns simplified error response for non-2xx status codes."
+          }
+        }
+      ],
+      "description": "Test error scenarios and error handling"
+    },
+    {
+      "name": "🌐 Real-World Examples",
+      "item": [
+        {
+          "name": "JSONPlaceholder - Get Posts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://jsonplaceholder.typicode.com/posts\",\n  \"method\": \"get\",\n  \"params\": {\n    \"_limit\": \"5\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Get posts from JSONPlaceholder API.\n\n✅ Expected: Array of 5 post objects"
+          }
+        },
+        {
+          "name": "JSONPlaceholder - Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://jsonplaceholder.typicode.com/posts\",\n  \"method\": \"post\",\n  \"params\": {\n    \"title\": \"Test Post via API Proxy\",\n    \"body\": \"This post was created through the API Proxy\",\n    \"userId\": 1\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Create a post via JSONPlaceholder API.\n\n✅ Expected: Created post object with id=101"
+          }
+        },
+        {
+          "name": "GitHub API - Get User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-CF-Region",
+                "value": "{{REGION}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://api.github.com/users/octocat\",\n  \"method\": \"get\",\n  \"headers\": {\n    \"User-Agent\": \"API-Proxy-Test\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/",
+              "host": ["{{BASE_URL}}"],
+              "path": [""]
+            },
+            "description": "Get GitHub user information.\n\n✅ Expected: User object for @octocat\n\nNote: GitHub API requires User-Agent header."
+          }
+        }
+      ],
+      "description": "Real-world API usage examples"
+    }
+  ]
+}

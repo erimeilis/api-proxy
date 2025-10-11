@@ -2,6 +2,8 @@ use worker::*;
 
 mod auth;
 mod handlers;
+#[macro_use]
+mod logger;
 
 #[macro_use]
 mod processors;
@@ -30,14 +32,22 @@ async fn fetch(
         return auth::AuthError::forbidden()?.try_into();
     }
 
+    // Read X-Log-Level header to determine logging level
+    let log_level = logger::LogLevel::from_header(
+        &worker_req
+            .headers()
+            .get("X-Log-Level")?
+            .unwrap_or_default()
+    );
+
     // Get the datacenter where main worker is executing
     let colo = worker_req.cf().map(|cf| cf.colo()).unwrap_or("unknown".to_string());
-    console_log!("Main worker executing in datacenter: {}", colo);
+    log_info!("Request received at datacenter: {}", colo);
 
     // Get the original URL path
     let url = worker_req.url()?;
     let path = url.path().to_string();
-    console_log!("Request path: {}", path);
+    log_debug!(log_level, "Request path: {}", path);
 
     // Read X-CF-Region header to determine target region
     let region_header = worker_req
@@ -45,7 +55,7 @@ async fn fetch(
         .get("X-CF-Region")?
         .unwrap_or_else(|| "wnam".to_string()); // Default to Western North America
 
-    console_log!("X-CF-Region header: {}", region_header);
+    log_info!("Selected region: {}", region_header);
 
     // Read X-Request-Type header (soap or http)
     let request_type = worker_req
@@ -67,13 +77,13 @@ async fn fetch(
         "af" => ProcessorRegion::Africa,
         "me" => ProcessorRegion::MiddleEast,
         _ => {
-            console_log!("Unknown region '{}', defaulting to Western North America", region_header);
+            log_info!("Unknown region '{}', defaulting to Western North America", region_header);
             ProcessorRegion::WesternNorthAmerica
         }
     };
 
     // Route to the appropriate regional processor
-    route_to_processor(&env, &path, body_text, region, &request_type).await?.try_into()
+    route_to_processor(&env, &path, body_text, region, &request_type, log_level).await?.try_into()
 }
 
 /// Route request to appropriate regional processor based on location
@@ -88,6 +98,7 @@ async fn route_to_processor(
     body: String,
     region: ProcessorRegion,
     request_type: &str,
+    log_level: logger::LogLevel,
 ) -> Result<Response> {
     let (namespace_name, do_name, location_hint, is_eu) = match region {
         ProcessorRegion::WesternNorthAmerica => ("WNAM_PROCESSOR", "wnam-processor-1", "wnam", false),
@@ -100,7 +111,8 @@ async fn route_to_processor(
         ProcessorRegion::MiddleEast => ("ME_PROCESSOR", "me-processor-1", "me", false),
     };
 
-    console_log!(
+    log_debug!(
+        log_level,
         "Routing to {} with location hint: {} (EU jurisdiction: {})",
         namespace_name,
         location_hint,
@@ -118,12 +130,13 @@ async fn route_to_processor(
     // Create internal request URL preserving the path
     let internal_url = format!("http://internal{}", path);
 
-    // Create headers and forward X-Request-Type to Durable Object
+    // Create headers and forward X-Request-Type and X-Log-Level to Durable Object
     let headers = worker::Headers::new();
     headers.set("Content-Type", "application/json")?;
     if !request_type.is_empty() {
         headers.set("X-Request-Type", request_type)?;
     }
+    headers.set("X-Log-Level", if log_level == logger::LogLevel::Debug { "debug" } else { "info" })?;
 
     // Forward request to Durable Object
     let mut init = RequestInit::new();

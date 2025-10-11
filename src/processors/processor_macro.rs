@@ -7,6 +7,8 @@ macro_rules! define_processor {
         use worker::*;
         use crate::processors::common;
         use crate::handlers;
+        use crate::logger;
+        use crate::{log_info, log_debug, log_error};
 
         // Durable Object that processes requests in a specific region
         #[durable_object]
@@ -21,10 +23,15 @@ macro_rules! define_processor {
             }
 
             async fn fetch(&self, mut req: Request) -> Result<Response> {
+                // Read log level from header
+                let log_level = logger::LogLevel::from_header(
+                    &req.headers().get("X-Log-Level")?.unwrap_or_default()
+                );
+
                 // Get the actual datacenter where this DO is executing
                 let actual_colo = common::get_actual_colo().await;
-                console_log!(
-                    "{} executing in datacenter: {} (Region: {})",
+                log_info!(
+                    "{} processing in datacenter: {} (Region: {})",
                     stringify!($struct_name),
                     actual_colo,
                     $region_name
@@ -36,53 +43,53 @@ macro_rules! define_processor {
 
                 if is_soap {
                     // Handle SOAP request
-                    console_log!("Processing SOAP request (X-Request-Type: soap)");
+                    log_info!("Processing SOAP request");
 
                     let soap_request_data = match req.json::<handlers::SoapRequestData>().await {
                         Ok(data) => {
-                            console_log!("Received SOAP request data: action={}, namespace={}", data.action, data.namespace);
+                            log_debug!(log_level, "SOAP action: {}, namespace: {}, url: {}", data.action, data.namespace, data.url);
                             data
                         }
                         Err(e) => {
-                            console_log!("Failed to parse SOAP request JSON: {}", e);
+                            log_error!("Failed to parse SOAP request JSON: {}", e);
                             return Response::error(format!("Invalid SOAP JSON: {}", e), 400);
                         }
                     };
 
                     // Process the SOAP request
-                    match handlers::process_soap_request(soap_request_data).await {
+                    match handlers::process_soap_request(soap_request_data, log_level).await {
                         Ok(api_response) => {
-                            console_log!("Successfully processed SOAP request");
+                            log_info!("SOAP request completed successfully");
                             Response::from_json(&api_response)
                         }
                         Err(e) => {
-                            console_log!("SOAP request processing error: {}", e);
+                            log_error!("SOAP request processing error: {}", e);
                             Response::error(format!("SOAP error: {}", e), 500)
                         }
                     }
                 } else {
                     // Handle regular HTTP request
-                    console_log!("Processing regular HTTP request");
+                    log_info!("Processing HTTP request");
 
                     let request_data = match req.json::<handlers::RequestData>().await {
                         Ok(data) => {
-                            console_log!("Received request data for URL: {}", data.url);
+                            log_debug!(log_level, "HTTP method: {:?}, url: {}", data.method, data.url);
                             data
                         }
                         Err(e) => {
-                            console_log!("Failed to parse request JSON: {}", e);
+                            log_error!("Failed to parse request JSON: {}", e);
                             return Response::error(format!("Invalid JSON: {}", e), 400);
                         }
                     };
 
                     // Process the proxy request
-                    match handlers::process_request(request_data).await {
+                    match handlers::process_request(request_data, log_level).await {
                         Ok(api_response) => {
-                            console_log!("Successfully processed proxy request");
+                            log_info!("HTTP request completed successfully");
                             Response::from_json(&api_response)
                         }
                         Err(e) => {
-                            console_log!("Proxy request processing error: {}", e);
+                            log_error!("Proxy request processing error: {}", e);
                             Response::error(format!("Proxy error: {}", e), 500)
                         }
                     }

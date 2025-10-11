@@ -8,6 +8,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use worker::*;
+use crate::logger::LogLevel;
+use crate::{log_info, log_debug};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub enum HttpMethod {
@@ -109,7 +111,7 @@ pub enum ApiResponse {
 }
 
 /// Process an HTTP request by forwarding it to the target URL
-pub async fn process_request(data: RequestData) -> anyhow::Result<ApiResponse> {
+pub async fn process_request(data: RequestData, log_level: LogLevel) -> anyhow::Result<ApiResponse> {
     // Create a client (timeout not supported in WebAssembly)
     let client = Client::builder()
         .build()
@@ -143,23 +145,23 @@ pub async fn process_request(data: RequestData) -> anyhow::Result<ApiResponse> {
         HttpMethod::Get | HttpMethod::Head | HttpMethod::Delete
     ) {
         request = request.query(&data.params);
-        console_log!(
-            "Sending {:?} request to {} with query params: {:?}",
+        log_debug!(
+            log_level,
+            "Sending {:?} request to {} with query params",
             data.method,
-            data.url,
-            &data.params
+            data.url
         );
     } else {
         request = request.json(&data.params);
-        console_log!(
-            "Sending {:?} request to {} with JSON body: {:?}",
+        log_debug!(
+            log_level,
+            "Sending {:?} request to {} with JSON body",
             data.method,
-            data.url,
-            &data.params
+            data.url
         );
     }
 
-    console_log!("Request headers: {:?}", &data.headers);
+    log_debug!(log_level, "Request headers: {} custom headers", data.headers.len());
 
     // Send the request
     let response = request.send().await.context("Failed to send request")?;
@@ -172,7 +174,7 @@ pub async fn process_request(data: RequestData) -> anyhow::Result<ApiResponse> {
         .unwrap_or("Unknown Status");
 
     // Log the response status
-    console_log!("Received response with status: {} ({})", status, status_text);
+    log_info!("Response status: {}", status);
 
     // Check if it's a success status (200-299)
     if (200..300).contains(&status) {
@@ -195,8 +197,8 @@ pub async fn process_request(data: RequestData) -> anyhow::Result<ApiResponse> {
             .unwrap_or_else(|_| Value::String(text.clone()));
 
         // Log the full response
-        console_log!("Response headers: {:?}", &header_map);
-        console_log!("Response body: {}", text);
+        log_debug!(log_level, "Response headers: {} headers", header_map.len());
+        log_debug!(log_level, "Response body size: {} bytes", text.len());
 
         Ok(ApiResponse::Success(ResponseData {
             status,
@@ -205,7 +207,7 @@ pub async fn process_request(data: RequestData) -> anyhow::Result<ApiResponse> {
         }))
     } else {
         // For error responses, return only the status code and message
-        console_log!("Error response: returning only status code and message");
+        log_debug!(log_level, "Error response: {}", status_text);
 
         Ok(ApiResponse::Error(ErrorResponseData {
             status,

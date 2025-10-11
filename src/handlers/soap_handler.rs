@@ -8,6 +8,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 use worker::*;
+use crate::logger::LogLevel;
+use crate::{log_info, log_debug};
 
 #[derive(Debug, Deserialize)]
 pub struct SoapRequestData {
@@ -59,7 +61,7 @@ pub enum ApiResponse {
 }
 
 /// Process a SOAP request by building SOAP envelope and forwarding to target URL
-pub async fn process_soap_request(data: SoapRequestData) -> anyhow::Result<ApiResponse> {
+pub async fn process_soap_request(data: SoapRequestData, log_level: LogLevel) -> anyhow::Result<ApiResponse> {
     // Create a client (timeout not supported in WebAssembly)
     let client = Client::builder()
         .build()
@@ -130,12 +132,12 @@ pub async fn process_soap_request(data: SoapRequestData) -> anyhow::Result<ApiRe
         soap_body_content
     );
 
-    console_log!(
-        "Sending SOAP request to {} with action {}, namespace {}, params {:?}",
+    log_debug!(
+        log_level,
+        "Sending SOAP request to {} with action {}, {} params",
         data.url,
         data.action,
-        data.namespace,
-        data.params
+        data.params.len()
     );
 
     // Build and send the request
@@ -151,11 +153,7 @@ pub async fn process_soap_request(data: SoapRequestData) -> anyhow::Result<ApiRe
         .canonical_reason()
         .unwrap_or("Unknown Status");
 
-    console_log!(
-        "Received SOAP response with status: {} ({})",
-        status,
-        status_text
-    );
+    log_info!("SOAP response status: {}", status);
 
     // Check if it's a success status (200-299)
     if (200..300).contains(&status) {
@@ -177,8 +175,8 @@ pub async fn process_soap_request(data: SoapRequestData) -> anyhow::Result<ApiRe
         let body = serde_json::from_str::<Value>(&text)
             .unwrap_or_else(|_| Value::String(text.clone()));
 
-        console_log!("SOAP Response headers: {:?}", &header_map);
-        console_log!("SOAP Response body: {}", text);
+        log_debug!(log_level, "SOAP response headers: {} headers", header_map.len());
+        log_debug!(log_level, "SOAP response body size: {} bytes", text.len());
 
         Ok(ApiResponse::Success(ResponseData {
             status,
@@ -186,7 +184,7 @@ pub async fn process_soap_request(data: SoapRequestData) -> anyhow::Result<ApiRe
             body,
         }))
     } else {
-        console_log!("SOAP Error response: status {} - {}", status, status_text);
+        log_debug!(log_level, "SOAP error response: {}", status_text);
 
         Ok(ApiResponse::Error(ErrorResponseData {
             status,
