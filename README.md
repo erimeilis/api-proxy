@@ -18,6 +18,20 @@ A high-performance, multi-region HTTP and SOAP proxy built with Rust for Cloudfl
 - **🛡️ EU Jurisdiction**: Location hints ensure GDPR-compliant data residency
 - **📝 Smart Logging**: Minimal logging (info) by default, detailed logging on demand (debug)
 
+## 💡 Why I Built This
+
+I ran into a real-world problem: my server's region was blocked by an API provider I needed to integrate with. Traditional solutions didn't work:
+
+- **VPN wasn't practical** - I only needed it for specific API calls, not all traffic
+- **IP whitelisting conflicts** - Some of my integrations had strict IP whitelists that wouldn't work with a VPN
+- **Multiple regional requirements** - Different providers needed different regions (some required EU for GDPR, others needed US endpoints)
+
+This proxy solves these problems by:
+- **Selective routing** - Route only specific requests through the proxy, not all traffic
+- **Multi-region flexibility** - Choose the appropriate region per request via headers
+- **Stable IP addresses** - Cloudflare's Durable Objects provide consistent IPs per region
+- **Zero server maintenance** - Runs on Cloudflare's edge network with automatic scaling
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -405,6 +419,55 @@ wrangler secret put AUTH_TOKEN
 ```bash
 wrangler tail --format pretty
 ```
+
+## 🔄 CI/CD Setup
+
+### Automatic Deployments via Cloudflare Dashboard
+
+Cloudflare Workers provides built-in Git integration for automatic deployments. This is the easiest way to set up CI/CD for Rust WASM projects:
+
+1. **Navigate to Cloudflare Dashboard**
+   - Go to Workers & Pages
+   - Select your `api-proxy` worker
+   - Click Settings → Deployments
+
+2. **Connect Git Repository**
+   - Click "Connect to Git"
+   - Authorize GitHub/GitLab
+   - Select repository: `erimeilis/api-proxy`
+   - Select branch: `main`
+
+3. **Configure Build Settings**
+
+   Since this is a Rust WASM project, the build configuration is not straightforward. Use these exact commands:
+
+   **Build command:**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+   ```
+
+   **Deploy command:**
+   ```bash
+   . "$HOME/.cargo/env" && npx wrangler deploy
+   ```
+
+   **Root directory:** `/` (default)
+
+4. **Environment Variables**
+   - Secrets (like `AUTH_TOKEN`) are managed separately via Wrangler CLI
+   - They persist across deployments automatically
+   - No need to configure in CI/CD settings
+
+5. **Save and Deploy**
+   - Click "Save and Deploy"
+   - Every push to `main` will trigger automatic deployment
+   - Build logs available in real-time during deployment
+
+**Why these commands?**
+- Rust isn't pre-installed in Cloudflare's build environment
+- The build command installs Rust using the official rustup installer
+- The deploy command sources the Rust environment and runs wrangler
+- `worker-build` is automatically installed by the wrangler build process
 
 ## 🏗️ Architecture
 
