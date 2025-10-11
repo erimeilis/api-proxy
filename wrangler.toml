@@ -1,0 +1,83 @@
+name = "api-proxy"
+main = "build/index.js"
+compatibility_date = "2025-10-11"
+
+routes = [
+    { pattern = "api-proxy.admice.com", custom_domain = true }
+]
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[placement]
+mode = "smart"
+
+# Secrets (set via: wrangler secret put AUTH_TOKEN)
+# AUTH_TOKEN - Authentication bearer token for API requests
+
+# Durable Objects for 8 global regions
+# Western North America
+[[durable_objects.bindings]]
+name = "WNAM_PROCESSOR"
+class_name = "WNAMProcessor"
+script_name = "api-proxy"
+
+# Eastern North America
+[[durable_objects.bindings]]
+name = "ENAM_PROCESSOR"
+class_name = "ENAMProcessor"
+script_name = "api-proxy"
+
+# Western Europe (EU jurisdiction)
+[[durable_objects.bindings]]
+name = "WEUR_PROCESSOR"
+class_name = "WEURProcessor"
+script_name = "api-proxy"
+
+# Eastern Europe (EU jurisdiction)
+[[durable_objects.bindings]]
+name = "EEUR_PROCESSOR"
+class_name = "EEURProcessor"
+script_name = "api-proxy"
+
+# Asia-Pacific
+[[durable_objects.bindings]]
+name = "APAC_PROCESSOR"
+class_name = "APACProcessor"
+script_name = "api-proxy"
+
+# Oceania
+[[durable_objects.bindings]]
+name = "OC_PROCESSOR"
+class_name = "OCProcessor"
+script_name = "api-proxy"
+
+# Africa
+[[durable_objects.bindings]]
+name = "AF_PROCESSOR"
+class_name = "AFProcessor"
+script_name = "api-proxy"
+
+# Middle East
+[[durable_objects.bindings]]
+name = "ME_PROCESSOR"
+class_name = "MEProcessor"
+script_name = "api-proxy"
+
+# Create region processors
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = [
+    "WNAMProcessor",
+    "ENAMProcessor",
+    "WEURProcessor",
+    "EEURProcessor",
+    "APACProcessor",
+    "OCProcessor",
+    "AFProcessor",
+    "MEProcessor",
+]
