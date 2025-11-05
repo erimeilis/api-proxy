@@ -7,7 +7,6 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use worker::*;
 use crate::logger::LogLevel;
 use crate::{log_info, log_debug};
 
@@ -74,20 +73,10 @@ pub struct RequestData {
     /// Request headers as key-value pairs
     #[serde(default)]
     pub headers: HashMap<String, String>,
-
-    /// Request timeout in seconds
-    /// Note: Timeout is not used in WebAssembly but kept for API compatibility
-    #[serde(default = "default_timeout")]
-    #[allow(dead_code)]
-    pub timeout: u64,
 }
 
 fn default_method() -> HttpMethod {
     HttpMethod::Post
-}
-
-fn default_timeout() -> u64 {
-    30
 }
 
 #[derive(Serialize)]
@@ -112,7 +101,7 @@ pub enum ApiResponse {
 
 /// Process an HTTP request by forwarding it to the target URL
 pub async fn process_request(data: RequestData, log_level: LogLevel) -> anyhow::Result<ApiResponse> {
-    // Create a client (timeout not supported in WebAssembly)
+    // Create a client
     let client = Client::builder()
         .build()
         .context("Failed to create HTTP client")?;
@@ -164,6 +153,7 @@ pub async fn process_request(data: RequestData, log_level: LogLevel) -> anyhow::
     log_debug!(log_level, "Request headers: {} custom headers", data.headers.len());
 
     // Send the request
+    // Note: Cloudflare Workers enforces a 30-second timeout on all fetch requests
     let response = request.send().await.context("Failed to send request")?;
 
     // Process the response

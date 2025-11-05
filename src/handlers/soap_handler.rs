@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use worker::*;
 use crate::logger::LogLevel;
 use crate::{log_info, log_debug};
 
@@ -29,15 +28,6 @@ pub struct SoapRequestData {
     /// Request headers as key-value pairs
     #[serde(default)]
     pub headers: HashMap<String, String>,
-
-    /// Request timeout in seconds
-    #[serde(default = "default_timeout")]
-    #[allow(dead_code)]
-    pub timeout: u64,
-}
-
-fn default_timeout() -> u64 {
-    30
 }
 
 #[derive(Serialize)]
@@ -62,7 +52,7 @@ pub enum ApiResponse {
 
 /// Process a SOAP request by building SOAP envelope and forwarding to target URL
 pub async fn process_soap_request(data: SoapRequestData, log_level: LogLevel) -> anyhow::Result<ApiResponse> {
-    // Create a client (timeout not supported in WebAssembly)
+    // Create a client
     let client = Client::builder()
         .build()
         .context("Failed to create HTTP client")?;
@@ -144,6 +134,7 @@ pub async fn process_soap_request(data: SoapRequestData, log_level: LogLevel) ->
     let request = client.post(&data.url).headers(headers).body(soap_envelope);
 
     // Send the request
+    // Note: Cloudflare Workers enforces a 30-second timeout on all fetch requests
     let response = request.send().await.context("Failed to send SOAP request")?;
 
     // Process the response

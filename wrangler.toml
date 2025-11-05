@@ -1,6 +1,6 @@
 name = "api-proxy"
 main = "build/index.js"
-compatibility_date = "2025-10-11"
+compatibility_date = "2025-01-05"
 
 routes = [
     { pattern = "api-proxy.admice.com", custom_domain = true }
@@ -20,6 +20,8 @@ mode = "smart"
 # AUTH_TOKEN - Authentication bearer token for API requests
 
 # Durable Objects for 8 global regions
+# Each region has 10 instances (0-9) for 10x concurrency via hash-based distribution
+# DOs are named: {region}-processor-{0-9} (e.g., wnam-processor-0, wnam-processor-1, etc.)
 # Western North America
 [[durable_objects.bindings]]
 name = "WNAM_PROCESSOR"
@@ -68,7 +70,9 @@ name = "ME_PROCESSOR"
 class_name = "MEProcessor"
 script_name = "api-proxy"
 
-# Create region processors
+# Durable Object migrations
+# Named DOs are created on-demand when first accessed
+# No explicit migration needed for hash-based distribution
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = [

@@ -1,4 +1,6 @@
 use worker::*;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 mod auth;
 mod handlers;
@@ -88,6 +90,8 @@ async fn fetch(
 
 /// Route request to appropriate regional processor based on location
 ///
+/// Uses hash-based distribution across 10 Durable Objects per region for 10x concurrency.
+///
 /// EU Jurisdiction Enforcement:
 /// For GDPR compliance, Western and Eastern Europe processors use location hints
 /// "weur" and "eeur" which Cloudflare automatically maps to EU datacenters,
@@ -100,21 +104,30 @@ async fn route_to_processor(
     request_type: &str,
     log_level: logger::LogLevel,
 ) -> Result<Response> {
-    let (namespace_name, do_name, location_hint, is_eu) = match region {
-        ProcessorRegion::WesternNorthAmerica => ("WNAM_PROCESSOR", "wnam-processor-1", "wnam", false),
-        ProcessorRegion::EasternNorthAmerica => ("ENAM_PROCESSOR", "enam-processor-1", "enam", false),
-        ProcessorRegion::WesternEurope => ("WEUR_PROCESSOR", "weur-processor-1", "weur", true),
-        ProcessorRegion::EasternEurope => ("EEUR_PROCESSOR", "eeur-processor-1", "eeur", true),
-        ProcessorRegion::AsiaPacific => ("APAC_PROCESSOR", "apac-processor-1", "apac", false),
-        ProcessorRegion::Oceania => ("OC_PROCESSOR", "oc-processor-1", "oc", false),
-        ProcessorRegion::Africa => ("AF_PROCESSOR", "af-processor-1", "af", false),
-        ProcessorRegion::MiddleEast => ("ME_PROCESSOR", "me-processor-1", "me", false),
+    // Calculate hash-based DO index (0-9) for load distribution
+    let mut hasher = DefaultHasher::new();
+    body.hash(&mut hasher);
+    let hash_value = hasher.finish();
+    let do_index = (hash_value % 10) as u32;
+
+    let (namespace_name, region_code, location_hint, is_eu) = match region {
+        ProcessorRegion::WesternNorthAmerica => ("WNAM_PROCESSOR", "wnam", "wnam", false),
+        ProcessorRegion::EasternNorthAmerica => ("ENAM_PROCESSOR", "enam", "enam", false),
+        ProcessorRegion::WesternEurope => ("WEUR_PROCESSOR", "weur", "weur", true),
+        ProcessorRegion::EasternEurope => ("EEUR_PROCESSOR", "eeur", "eeur", true),
+        ProcessorRegion::AsiaPacific => ("APAC_PROCESSOR", "apac", "apac", false),
+        ProcessorRegion::Oceania => ("OC_PROCESSOR", "oc", "oc", false),
+        ProcessorRegion::Africa => ("AF_PROCESSOR", "af", "af", false),
+        ProcessorRegion::MiddleEast => ("ME_PROCESSOR", "me", "me", false),
     };
+
+    let do_name = format!("{}-processor-{}", region_code, do_index);
 
     log_debug!(
         log_level,
-        "Routing to {} with location hint: {} (EU jurisdiction: {})",
+        "Routing to {} ({}) with location hint: {} (EU jurisdiction: {})",
         namespace_name,
+        do_name,
         location_hint,
         is_eu
     );
@@ -125,7 +138,7 @@ async fn route_to_processor(
     // Get DO stub with location hint
     // For EU regions (weur/eeur), the location hint enforces EU jurisdiction automatically
     // This ensures GDPR compliance by keeping data within EU datacenters
-    let stub = namespace.get_by_name_with_location_hint(do_name, location_hint)?;
+    let stub = namespace.get_by_name_with_location_hint(&do_name, location_hint)?;
 
     // Create internal request URL preserving the path
     let internal_url = format!("http://internal{}", path);

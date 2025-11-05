@@ -13,7 +13,9 @@ macro_rules! define_processor {
         // Durable Object that processes requests in a specific region
         #[durable_object]
         pub struct $struct_name {
+            #[allow(dead_code)]
             state: State,
+            #[allow(dead_code)]
             env: Env,
         }
 

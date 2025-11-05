@@ -1,5 +1,3 @@
-use worker::*;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogLevel {
     Info,
