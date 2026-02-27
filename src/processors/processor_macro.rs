@@ -8,7 +8,6 @@ macro_rules! define_processor {
         use crate::processors::common;
         use crate::handlers;
         use crate::logger;
-        use crate::{log_info, log_debug, log_error};
 
         // Durable Object that processes requests in a specific region
         #[durable_object]

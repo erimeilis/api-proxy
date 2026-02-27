@@ -1,6 +1,6 @@
 name = "api-proxy"
 main = "build/index.js"
-compatibility_date = "2025-01-05"
+compatibility_date = "2026-02-27"
 
 routes = [
     { pattern = "api-proxy.admice.com", custom_domain = true }
@@ -9,9 +9,8 @@ routes = [
 [build]
 command = "cargo install -q worker-build && worker-build --release"
 
-[observability]
-enabled = true
-head_sampling_rate = 1
+[observability.logs]
+enabled = false
 
 [placement]
 mode = "smart"
