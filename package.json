@@ -1,5 +1,8 @@
 {
   "devDependencies": {
-    "wrangler": "^4.45.4"
+    "wrangler": "^4.100.0"
+  },
+  "overrides": {
+    "esbuild": "^0.28.1"
   }
 }
