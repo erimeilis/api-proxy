@@ -512,6 +512,17 @@ Cloudflare Workers provides built-in Git integration for automatic deployments. 
    . "$HOME/.cargo/env" && npx wrangler deploy
    ```
 
+   > ⚠️ The `. "$HOME/.cargo/env" &&` prefix is **mandatory**. The build command and
+   > deploy command run in separate shells, so Rust installed during the build step is
+   > not on `PATH` in the deploy step. Without sourcing the cargo env, wrangler's
+   > `[build]` step fails with `cargo: not found` (exit code 127).
+   >
+   > To upload a version without promoting it to production (e.g. for non-`main`
+   > branch builds), use `versions upload` instead of `deploy` — keeping the same prefix:
+   > ```bash
+   > . "$HOME/.cargo/env" && npx wrangler versions upload
+   > ```
+
    **Root directory:** `/` (default)
 
 4. **Environment Variables**

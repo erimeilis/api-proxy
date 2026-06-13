@@ -7,7 +7,7 @@ routes = [
 ]
 
 [build]
-command = "cargo install -q worker-build && worker-build --release"
+command = ". \"$HOME/.cargo/env\" && cargo install -q worker-build && worker-build --release"
 
 [observability.logs]
 enabled = false
